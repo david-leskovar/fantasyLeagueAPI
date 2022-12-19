@@ -1,6 +1,7 @@
 using FantasyLeagueProject.DTOs;
 using FantasyLeagueProject.Entities;
 using FantasyLeagueProject.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -68,6 +69,27 @@ namespace FantasyLeagueProject.Controllers
 
         }
 
+        [Authorize(Roles="Member")]
+        [HttpGet("Random method")]
+
+        public ActionResult GetSome() {
+
+
+            string userId = User.FindFirst(ClaimTypes.Name)?.Value;
+            string role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            var user = repository.GetUser(userId);
+            if (user == null) return BadRequest("User not found");
+
+
+            Console.WriteLine(user.Id);
+            Console.WriteLine(user.Username);
+            Console.WriteLine(role);
+
+            return Ok(user.Username);
+        
+        }
+
 
         private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt) {
 
@@ -94,7 +116,8 @@ namespace FantasyLeagueProject.Controllers
 
             List<Claim> claims = new List<Claim> {
 
-                new Claim(ClaimTypes.Name,user.Username!)
+                new Claim(ClaimTypes.Name,user.Username!),
+                new Claim(ClaimTypes.Role,"Member")
 
             };
 
@@ -111,6 +134,8 @@ namespace FantasyLeagueProject.Controllers
         
         
         }
+
+        
 
 
 
