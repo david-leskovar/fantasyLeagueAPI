@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 
 namespace FantasyLeagueProject.Controllers
 {
+    [AllowAnonymous]
     [ApiController]
     [Route("[controller]")]
     public class AccountsController : ControllerBase
@@ -25,7 +26,7 @@ namespace FantasyLeagueProject.Controllers
         }
 
         [HttpPost("Login")]
-        public ActionResult Login(LoginDTO request)
+        public ActionResult<User> Login(LoginDTO request)
         {
 
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -34,9 +35,17 @@ namespace FantasyLeagueProject.Controllers
             var user = repository.GetUser(request.Username!);
             if (user == null) return BadRequest("User not found");
 
+
             if (!VerifyPasswordHash(request.Password!, user.PasswordHash!, user.PasswordSalt!)) return BadRequest("Wrong password");
 
-            LoginReturn returnLogin = new LoginReturn() { Username=user.Username!,Token=CreateToken(user)};
+
+            string role = "Member";
+            if (user.Username == "admin") {
+                role = "Admin";
+            }
+
+
+            LoginReturn returnLogin = new LoginReturn() { Username=user.Username!,Token=CreateToken(user),Role=role};
 
             return Ok(returnLogin);
 
@@ -47,7 +56,7 @@ namespace FantasyLeagueProject.Controllers
 
 
         [HttpPost("Register")]
-        public  ActionResult<User> Register(RegisterDTO request)
+        public  ActionResult Register(RegisterDTO request)
 
 
 
@@ -61,34 +70,30 @@ namespace FantasyLeagueProject.Controllers
 
             var userToCreate = new User() { Id = Guid.NewGuid(), Username = request.Username, PasswordHash = passwordHash, PasswordSalt = passwordSalt };
 
-            if (repository.AddUser(userToCreate)) return Ok("User successfully created");
-            else return BadRequest(ModelState);
+            if (repository.AddUser(userToCreate)) return Ok();
+            else return BadRequest("Registation was not succesful");
 
 
 
 
         }
 
-        [Authorize(Roles="Member")]
-        [HttpGet("Random method")]
+        [HttpGet("SeedAdmin")]
 
-        public ActionResult GetSome() {
-
-
-            string userId = User.FindFirst(ClaimTypes.Name)?.Value;
-            string role = User.FindFirst(ClaimTypes.Role)?.Value;
-
-            var user = repository.GetUser(userId);
-            if (user == null) return BadRequest("User not found");
+        public ActionResult SeedAdmin() {
 
 
-            Console.WriteLine(user.Id);
-            Console.WriteLine(user.Username);
-            Console.WriteLine(role);
+            var user = repository.GetUser("admin");
+            if (user != null) return BadRequest("admin already exists");
 
-            return Ok(user.Username);
+            CreatePasswordHash("Pa$$w0rd", out byte[] passwordHash, out byte[] passwordSalt);
+            var userToCreate = new User() { Id = Guid.NewGuid(), Username = "admin", PasswordHash = passwordHash, PasswordSalt = passwordSalt };
+            if (repository.AddUser(userToCreate)) return Ok();
+            else return BadRequest("Registation was not succesful");
+
+        }
+
         
-        }
 
 
         private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt) {
@@ -117,9 +122,17 @@ namespace FantasyLeagueProject.Controllers
             List<Claim> claims = new List<Claim> {
 
                 new Claim(ClaimTypes.Name,user.Username!),
-                new Claim(ClaimTypes.Role,"Member")
-
+               
             };
+
+            if (user.Username == "admin")
+            {
+                claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+            }
+            else {
+                claims.Add(new Claim(ClaimTypes.Role, "Member"));
+            }
+
 
             var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(configuration.GetSection("AppSettings:Token").Value!));
 

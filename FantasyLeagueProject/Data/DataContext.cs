@@ -19,6 +19,12 @@ namespace FantasyLeagueProject.Data
             options.UseSqlite(Configuration.GetConnectionString("DBConnection"));
         }
         public DbSet<User> Users { get; set; }
+        public DbSet<Tournament> Tournaments { get; set; }
+        public DbSet<Player> Players { get; set; }
+        public DbSet<HistoryTeam> HistoryTeams { get; set; }
+        public DbSet<Performance> Performances { get; set; }
+        public DbSet<Post> Posts { get; set; }
+
 
     }
 }
